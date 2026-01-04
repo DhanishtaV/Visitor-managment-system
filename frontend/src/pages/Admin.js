@@ -15,7 +15,7 @@ function Admin() {
 
   // Fetch visitor data
   useEffect(() => {
-    fetch("http://localhost:5000/api/visitors")
+    fetch("http://localhost:5001/api/visitors")
       .then((res) => res.json())
       .then((data) => setVisitors(data))
       .catch(() => alert("Unable to load visitors"));

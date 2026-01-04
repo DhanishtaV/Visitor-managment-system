@@ -2,136 +2,225 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 
 function VisitorPass() {
-  const { id } = useParams(); // 👈 get ID from URL
+  const { id } = useParams();
   const [visitor, setVisitor] = useState(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch(`http://localhost:5000/api/visitors/${id}`)
-      .then((res) => res.json())
-      .then((data) => setVisitor(data))
-      .catch((err) => console.log("Error loading visitor:", err));
+    const fetchVisitor = async () => {
+      try {
+        const res = await fetch(`http://localhost:5001/api/visitor/${id}`);
+        const data = await res.json();
+
+        if (!res.ok) setError(data.message || "Failed to load pass");
+        else setVisitor(data);
+      } catch {
+        setError("Server error");
+      }
+    };
+    fetchVisitor();
   }, [id]);
 
-  if (!visitor) {
-    return (
-      <h2 style={{ textAlign: "center", marginTop: "50px" }}>
-        Loading visitor pass...
-      </h2>
-    );
-  }
+  if (error) return <p style={{ textAlign: "center" }}>{error}</p>;
+  if (!visitor) return <p style={{ textAlign: "center" }}>Loading pass...</p>;
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        background: "#f2f4f7",
-        fontFamily: "Arial",
-        padding: "40px",
-      }}
-    >
-      <div
-        style={{
-          width: "600px",
-          background: "white",
-          padding: "30px",
-          borderRadius: "12px",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-        }}
-      >
-        <h2 style={{ textAlign: "center", marginBottom: "25px" }}>
-          E - Visitor Pass
-        </h2>
-
-        {/* TOP SECTION */}
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
-          {/* LEFT INFO */}
-          <div style={{ fontSize: "16px", lineHeight: "28px" }}>
-            <p>
-              <strong>Visitor/Vendor Name:</strong> {visitor.name}
-            </p>
-            <p>
-              <strong>Company Name:</strong> {visitor.company}
-            </p>
-            <p>
-              <strong>Contact Number:</strong> {visitor.phone}
-            </p>
-            <p>
-              <strong>Purpose:</strong> {visitor.purpose}
-            </p>
-            <p>
-              <strong>Check-in Date & Time:</strong>{" "}
-              {new Date(visitor.createdAt).toLocaleString()}
-            </p>
-          </div>
-
-          {/* PHOTO */}
-          <div
-            style={{
-              width: "150px",
-              height: "180px",
-              border: "1px solid #ccc",
-              borderRadius: "8px",
-              overflow: "hidden",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              background: "#f9f9f9",
-            }}
-          >
-            {visitor.photoFile ? (
-              <img
-                src={`http://localhost:5000/uploads/photos/${visitor.photoFile}`}
-                alt="visitor"
-                style={{ width: "100%", height: "100%", objectFit: "cover" }}
-              />
-            ) : (
-              <span style={{ color: "#777" }}>Photo</span>
-            )}
+    <div style={styles.page}>
+      <div className="print-pass" style={styles.pass}>
+        {/* HEADER */}
+        <div style={styles.header}>
+          <img src="/thejo-logo.png" alt="Logo" style={styles.logo} />
+          <div style={styles.headerText}>
+            <h2 style={styles.title}>VISITOR PASS</h2>
+            <p style={styles.subtitle}>Authorized Entry</p>
           </div>
         </div>
 
-        {/* SIGNATURE SECTION */}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            marginTop: "40px",
-          }}
+        {/* PASS ID */}
+        <div style={styles.passIdBox}>
+          PASS ID · {visitor.passId}
+        </div>
+
+        {/* DETAILS */}
+        <div style={styles.details}>
+          <Info label="Name" value={visitor.name} />
+          <Info label="Type" value={visitor.visitorType} />
+          <Info label="Company" value={visitor.company} />
+          <Info label="Purpose" value={visitor.purpose} />
+          <Info label="Whom to Meet" value={visitor.whomToMeet || "--"} />
+          <Info label="Status" value={visitor.status} />
+          <Info
+            label="Check-in"
+            value={
+              visitor.checkinTime
+                ? new Date(visitor.checkinTime).toLocaleString()
+                : "Not yet"
+            }
+          />
+        </div>
+
+        {/* FOOTER */}
+        <div style={styles.footer}>
+          Please present this pass at the security desk
+        </div>
+
+        {/* PRINT */}
+        <button
+          onClick={() => window.print()}
+          style={styles.printBtn}
         >
-          <div
-            style={{
-              width: "45%",
-              height: "80px",
-              border: "1px solid #000",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              borderRadius: "6px",
-            }}
-          >
-            Security Sign
-          </div>
-
-          <div
-            style={{
-              width: "45%",
-              height: "80px",
-              border: "1px solid #000",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              borderRadius: "6px",
-            }}
-          >
-            Person Met Sign
-          </div>
-        </div>
+          Print Pass
+        </button>
       </div>
+
+      {/* PRINT CSS */}
+      <style>
+        {`
+          @media print {
+            body * {
+              visibility: hidden;
+            }
+            .print-pass, .print-pass * {
+              visibility: visible;
+            }
+            .print-pass {
+              position: absolute;
+              left: 0;
+              top: 0;
+              width: 100%;
+            }
+            button {
+              display: none;
+            }
+          }
+
+          @media (max-width: 600px) {
+            .print-pass {
+              padding: 24px !important;
+            }
+          }
+        `}
+      </style>
     </div>
   );
 }
+
+/* SMALL REUSABLE ROW */
+function Info({ label, value }) {
+  return (
+    <div style={styles.row}>
+      <span style={styles.label}>{label}</span>
+      <span style={styles.value}>{value}</span>
+    </div>
+  );
+}
+
+/* ================= STYLES ================= */
+
+const styles = {
+  page: {
+    minHeight: "100vh",
+    background: "#f4f6fb",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: "20px",
+  },
+
+  pass: {
+    background: "white",
+    width: "100%",
+    maxWidth: "520px",
+    borderRadius: "22px",
+    padding: "36px",
+    boxShadow: "0 20px 40px rgba(0,0,0,0.12)",
+    boxSizing: "border-box",
+  },
+
+  header: {
+    display: "flex",
+    alignItems: "center",
+    gap: "16px",
+    borderBottom: "1px solid #e5e7eb",
+    paddingBottom: "16px",
+    marginBottom: "20px",
+  },
+
+  logo: {
+    height: "60px",
+  },
+
+  headerText: {
+    flex: 1,
+  },
+
+  title: {
+    margin: 0,
+    fontSize: "20px",
+    letterSpacing: "1.5px",
+    color: "#0b1d3a",
+  },
+
+  subtitle: {
+    margin: 0,
+    fontSize: "13px",
+    color: "#6b7280",
+  },
+
+  passIdBox: {
+    background: "linear-gradient(90deg, #eef2ff, #e0e7ff)",
+    padding: "12px",
+    borderRadius: "12px",
+    textAlign: "center",
+    fontWeight: "700",
+    letterSpacing: "1px",
+    marginBottom: "22px",
+    color: "#0b1d3a",
+  },
+
+  details: {
+    display: "grid",
+    rowGap: "14px",
+    marginBottom: "24px",
+  },
+
+  row: {
+    display: "flex",
+    justifyContent: "space-between",
+    borderBottom: "1px dashed #e5e7eb",
+    paddingBottom: "6px",
+    fontSize: "15px",
+  },
+
+  label: {
+    color: "#6b7280",
+    fontWeight: "600",
+  },
+
+  value: {
+    color: "#111827",
+    fontWeight: "500",
+    textAlign: "right",
+    maxWidth: "60%",
+  },
+
+  footer: {
+    textAlign: "center",
+    fontSize: "13px",
+    color: "#6b7280",
+    marginBottom: "20px",
+  },
+
+  printBtn: {
+    width: "100%",
+    padding: "12px",
+    background: "#0d6efd",
+    color: "white",
+    border: "none",
+    borderRadius: "10px",
+    fontWeight: "600",
+    cursor: "pointer",
+  },
+};
 
 export default VisitorPass;

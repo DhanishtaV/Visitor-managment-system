@@ -1,0 +1,9 @@
+*** Invoice ***
+Username: 123
+Date: 22-10-2025 15:37
+-------------------------
+Item            Qty   Price      Total     
+Smartphone      2     15000.00   30000.00  
+-------------------------
+Grand Total: 30000.00
+Thank you for shopping with us!

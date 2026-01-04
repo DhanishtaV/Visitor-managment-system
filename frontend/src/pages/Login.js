@@ -3,121 +3,144 @@ import { useNavigate } from "react-router-dom";
 
 function Login() {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({ email: "", password: "" });
-  const [msg, setMsg] = useState("");
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-  const handleSubmit = async (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
 
     try {
-      const res = await fetch("http://localhost:5000/api/login", {
+      const res = await fetch("http://localhost:5001/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({ email, password }),
       });
 
       const data = await res.json();
 
-      if (res.ok) {
-        // Save login data
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("role", data.role);
-
-        // Redirect based on role
-        if (data.role === "admin") {
-          navigate("/dashboard");                 // Admin Dashboard
-        } else if (data.role === "security") {
-          navigate("/security-dashboard");        // Security Dashboard
-        } else {
-          setMsg("Invalid user role");
-        }
-      } else {
-        setMsg(data.message || "Login failed");
+      if (!res.ok) {
+        console.error("Login failed:", data.message);
+        return;
       }
+
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("role", data.role);
+
+      if (data.role === "admin") navigate("/admin");
+      else navigate("/security");
     } catch (err) {
-      console.log(err);
-      setMsg("Server error");
+      console.error("Server error:", err);
     }
   };
 
   return (
     <div style={styles.page}>
+      {/* Top corporate band */}
+      <div style={styles.topBand} />
+
+      {/* Login Card */}
       <div style={styles.card}>
-        <h2 style={styles.title}>Login</h2>
+        <img src="/thejo-logo.png" alt="THEJO" style={styles.logo} />
 
-        <form onSubmit={handleSubmit}>
-          <input
-            name="email"
-            placeholder="Email"
-            value={formData.email}
-            onChange={handleChange}
-            style={styles.input}
-          />
+        <h1 style={styles.title}>Secure Login</h1>
+        <p style={styles.subtitle}>Authorized personnel access only</p>
 
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={formData.password}
-            onChange={handleChange}
-            style={styles.input}
-          />
+        <input
+          type="email"
+          placeholder="Email address"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          style={styles.input}
+        />
 
-          <button style={styles.button}>Login</button>
-        </form>
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          style={styles.input}
+        />
 
-        {msg && <p style={styles.msg}>{msg}</p>}
+        <button onClick={handleLogin} style={styles.button}>
+          Login
+        </button>
       </div>
     </div>
   );
 }
 
-// ------------------ STYLES ------------------ //
+/* ================= STYLES ================= */
 
 const styles = {
   page: {
-    height: "100vh",
+    minHeight: "100vh",
+    background: "#F6F3EE", // beige background
     display: "flex",
-    justifyContent: "center",
     alignItems: "center",
-    background: "#eef1f7",
+    justifyContent: "center",
+    position: "relative",
+    fontFamily: "Inter, system-ui, sans-serif",
   },
+
+  topBand: {
+    position: "absolute",
+    top: 0,
+    width: "100%",
+    height: "160px",
+    background: "linear-gradient(135deg, #0F2A44, #123C6A)",
+  },
+
   card: {
-    width: "350px",
-    background: "white",
-    padding: "30px",
-    borderRadius: "10px",
-    boxShadow: "0 3px 10px rgba(0,0,0,0.1)",
-  },
-  title: {
+    background: "rgba(255,255,255,0.96)",
+    width: "420px",
+    padding: "42px 36px",
+    borderRadius: "20px",
     textAlign: "center",
-    fontSize: "22px",
-    marginBottom: "20px",
+    boxShadow: "0 40px 80px rgba(15,23,42,0.25)",
+    zIndex: 1,
   },
+
+  logo: {
+    height: "48px",
+    marginBottom: "24px",
+  },
+
+  title: {
+    fontSize: "26px",
+    fontWeight: "800",
+    marginBottom: "6px",
+    color: "#0F172A",
+  },
+
+  subtitle: {
+    fontSize: "14px",
+    color: "#64748B",
+    marginBottom: "26px",
+  },
+
   input: {
     width: "100%",
-    padding: "10px",
-    marginBottom: "12px",
-    borderRadius: "6px",
-    border: "1px solid #ccc",
+    padding: "14px 16px",
+    marginBottom: "16px",
+    borderRadius: "10px",
+    border: "1px solid #CBD5E1",
+    fontSize: "14px",
+    outline: "none",
   },
+
   button: {
     width: "100%",
-    padding: "12px",
-    background: "#0d6efd",
+    padding: "14px",
+    borderRadius: "999px",
     border: "none",
-    borderRadius: "6px",
-    color: "white",
+    background: "linear-gradient(135deg, #F4B740, #F7C55A)",
+    color: "#0F172A",
+    fontSize: "16px",
+    fontWeight: "700",
     cursor: "pointer",
-  },
-  msg: {
     marginTop: "10px",
-    color: "red",
-    textAlign: "center",
+    boxShadow: "0 12px 30px rgba(244,183,64,0.45)",
   },
 };
 

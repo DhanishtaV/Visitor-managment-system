@@ -7,254 +7,538 @@ function Dashboard() {
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState("All");
   const [filterStatus, setFilterStatus] = useState("All");
+  const [activeType, setActiveType] = useState("Visitor");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [selectedYear, setSelectedYear] = useState(
+  new Date().getFullYear()
+);
 
   useEffect(() => {
-    fetch("http://localhost:5000/api/visitors")
+    fetch("http://localhost:5001/api/visitors")
       .then((res) => res.json())
       .then((data) => setVisitors(data))
-      .catch((err) => console.log("Error:", err));
+      .catch(() => {});
   }, []);
 
   const filteredVisitors = visitors.filter((v) => {
-    const str = `${v.name} ${v.company} ${v.purpose}`.toLowerCase();
-    const m1 = str.includes(search.toLowerCase());
-    const m2 = filterType === "All" || v.visitorType === filterType;
-    const m3 = filterStatus === "All" || v.status === filterStatus;
-    return m1 && m2 && m3;
+    const matchText = `${v.name} ${v.company} ${v.purpose}`
+      .toLowerCase()
+      .includes(search.toLowerCase());
+
+    const matchType =
+      (filterType === "All" || v.visitorType === filterType) &&
+      v.visitorType === activeType;
+
+    const matchStatus = filterStatus === "All" || v.status === filterStatus;
+   
+    return matchText && matchType && matchStatus;
   });
 
   const openDoc = (path) => {
     if (!path) return;
-    window.open(`http://localhost:5000/uploads/${path}`, "_blank");
+    window.open(`http://localhost:5001/uploads/${path}`, "_blank");
   };
 
+  const downloadReport = (type, yearParam) => {
+  let from, to;
+
+  const year = Number(yearParam);
+
+  if (type === "yearly") {
+    from = new Date(year, 0, 1).toISOString();
+    to = new Date(year, 11, 31, 23, 59, 59).toISOString();
+  }
+
+  if (type === "daily") {
+    const today = new Date();
+    from = new Date(today.setHours(0, 0, 0, 0)).toISOString();
+    to = new Date(today.setHours(23, 59, 59, 999)).toISOString();
+  }
+
+  if (type === "weekly") {
+    const now = new Date();
+    const lastWeek = new Date();
+    lastWeek.setDate(now.getDate() - 7);
+    from = lastWeek.toISOString();
+    to = now.toISOString();
+  }
+
+  if (type === "monthly") {
+    const now = new Date();
+    from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    to = new Date(
+      now.getFullYear(),
+      now.getMonth() + 1,
+      0,
+      23,
+      59,
+      59
+    ).toISOString();
+  }
+
+  window.open(
+    `http://localhost:5001/api/visitors/report?from=${from}&to=${to}`,
+    "_blank"
+  );
+};
+
   return (
-    <div style={styles.page}>
+    <div style={styles.canvas}>
+      {/* HEADER */}
       <header style={styles.header}>
-        <img src="/logo.png" alt="logo" style={styles.logo} />
-        <h1 style={styles.headerTitle}>Admin Dashboard</h1>
-        <button style={styles.logoutBtn} onClick={() => navigate("/login")}>
-          Logout
-        </button>
+        <div style={styles.headerLeft}>
+          <button
+            style={styles.hamburger}
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+          >
+            ☰
+          </button>
+          <img src="/thejo-logo.png" alt="logo" style={styles.logo} />
+        </div>
+
+        <div style={styles.headerActions}>
+          <button style={styles.reportBtn} onClick={() => downloadReport("daily")}>
+            Daily
+          </button>
+          <button style={styles.reportBtn} onClick={() => downloadReport("weekly")}>
+            Weekly
+          </button>
+          <button style={styles.reportBtn} onClick={() => downloadReport("monthly")}>
+            Monthly
+          </button>
+        <button
+  style={styles.reportBtn}
+  onClick={() => downloadReport("yearly", selectedYear)}
+>
+  Yearly
+</button>
+
+          <select
+  value={selectedYear}
+  onChange={(e) => setSelectedYear(e.target.value)}
+  style={styles.select}
+>
+  <option value={2024}>2024</option>
+  <option value={2025}>2025</option>
+  <option value={2026}>2026</option>
+</select>
+
+<button
+  style={styles.reportBtn}
+  onClick={() => downloadReport("yearly", selectedYear)}
+>
+  Download Year Report
+</button>
+
+        </div>
       </header>
 
-      {/* Stats Row */}
-      <div style={styles.statsRow}>
-        <div style={styles.statBox}>
-          <h3>Total Visitors</h3>
-          <p>{visitors.length}</p>
-        </div>
-
-        <div style={styles.statBox}>
-          <h3>Inside</h3>
-          <p>{visitors.filter((v) => v.status === "Inside").length}</p>
-        </div>
-
-        <div style={styles.statBox}>
-          <h3>Checked-out</h3>
-          <p>{visitors.filter((v) => v.status === "Checked-out").length}</p>
-        </div>
-      </div>
-
-      {/* Search + Filters */}
-      <div style={styles.filterRow}>
-        <input
-          style={styles.search}
-          placeholder="Search name, company, purpose..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+      {/* SIDEBAR OVERLAY */}
+      {sidebarOpen && (
+        <div
+          style={styles.sidebarOverlay}
+          onClick={() => setSidebarOpen(false)}
         />
+      )}
 
-        <select
-          value={filterType}
-          onChange={(e) => setFilterType(e.target.value)}
-          style={styles.select}
-        >
-          <option>All</option>
-          <option>Visitor</option>
-          <option>Vendor</option>
-        </select>
+      {/* SIDEBAR */}
+      {sidebarOpen && (
+        <aside style={styles.sidebar}>
+          <h3 style={styles.sidebarTitle}>THEJO</h3>
 
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          style={styles.select}
-        >
-          <option>All</option>
-          <option>Inside</option>
-          <option>Checked-out</option>
-        </select>
-      </div>
+          {["Visitor", "Vendor", "Corporate"].map((type) => (
+            <button
+              key={type}
+              style={{
+                ...styles.sidebarItem,
+                background: activeType === type ? "#E5E7EB" : "transparent",
+                fontWeight: activeType === type ? "700" : "500",
+              }}
+              onClick={() => {
+                setActiveType(type);
+                setSidebarOpen(false);
+              }}
+            >
+              {type === "Corporate" ? "Corporate Staff" : `${type}s`}
+            </button>
+          ))}
 
-      {/* TABLE */}
-      <div style={styles.tableWrapper}>
-        <table style={styles.table}>
-          <thead>
-            <tr>
-              <th>Type</th>
-              <th>Name</th>
-              <th>Company</th>
-              <th>Purpose</th>
-              <th>Check-in</th>
-              <th>Status</th>
-              <th>Vendor Docs</th>
-              <th>Pass</th>
-            </tr>
-          </thead>
+          <button
+            style={styles.sidebarLogout}
+            onClick={() => navigate("/login")}
+          >
+            Logout
+          </button>
+        </aside>
+      )}
 
-          <tbody>
-            {filteredVisitors.map((v) => (
-              <tr key={v._id}>
-                <td>{v.visitorType}</td>
-                <td>{v.name}</td>
-                <td>{v.company}</td>
-                <td>{v.purpose}</td>
-                <td>{new Date(v.createdAt).toLocaleString()}</td>
+      {/* HERO */}
+      <section style={styles.hero}>
+        <h1 style={styles.heroTitle}>Admin Dashboard</h1>
+        <p style={styles.heroSubtitle}>
+          Centralized overview of visitor access and movement
+        </p>
+      </section>
 
-                <td>
-                  {v.status === "Inside" ? (
-                    <span style={styles.insideBadge}>Inside</span>
-                  ) : (
-                    <span style={styles.outBadge}>Checked-out</span>
-                  )}
-                </td>
+      {/* MAIN CONTENT */}
+      <main style={styles.stage}>
+        {/* STATS */}
+        <div style={styles.statsRow}>
+          <div style={styles.statCard}>
+            <p style={styles.statLabel}>Total</p>
+            <h2 style={styles.statValue}>{filteredVisitors.length}</h2>
+          </div>
 
-                {/* Vendor Docs */}
-                <td>
-                  {v.visitorType === "Vendor" ? (
-                    <div style={styles.docBtns}>
-                      {v.esiFile && (
-                        <button onClick={() => openDoc(v.esiFile)} style={styles.docBtn}>ESI</button>
-                      )}
-                      {v.pfFile && (
-                        <button onClick={() => openDoc(v.pfFile)} style={styles.docBtn}>PF</button>
-                      )}
-                      {v.wcFile && (
-                        <button onClick={() => openDoc(v.wcFile)} style={styles.docBtn}>WC</button>
-                      )}
-                      {v.insuranceFile && (
-                        <button onClick={() => openDoc(v.insuranceFile)} style={styles.docBtn}>Insurance</button>
-                      )}
-                      {v.agreementFile && (
-                        <button onClick={() => openDoc(v.agreementFile)} style={styles.docBtn}>WO/PO</button>
-                      )}
-                    </div>
-                  ) : (
-                    "-"
-                  )}
-                </td>
+          <div style={styles.statCard}>
+            <p style={styles.statLabel}>Inside</p>
+            <h2 style={styles.statValue}>
+              {filteredVisitors.filter((v) => v.status === "Inside").length}
+            </h2>
+          </div>
 
-                {/* PASS */}
-                <td>
-                  <button
-                    style={styles.passBtn}
-                    onClick={() => navigate(`/pass/${v._id}`)}
-                  >
-                    View Pass
-                  </button>
-                </td>
+          <div style={styles.statCard}>
+            <p style={styles.statLabel}>Checked-out</p>
+            <h2 style={styles.statValue}>
+              {filteredVisitors.filter((v) => v.status === "Checked-out").length}
+            </h2>
+          </div>
+        </div>
+
+        {/* FILTERS */}
+        <div style={styles.filterRow}>
+          <input
+            style={styles.search}
+            placeholder="Search name, company, purpose..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+
+          <select
+            style={styles.select}
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+          >
+            <option>All</option>
+            <option>Visitor</option>
+            <option>Vendor</option>
+          </select>
+
+          <select
+            style={styles.select}
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+          >
+            <option>All</option>
+            <option>Inside</option>
+            <option>Checked-out</option>
+            <option>Pending</option>
+          </select>
+        </div>
+
+        {/* TABLE */}
+        <div style={styles.tableWrapper}>
+          <table style={styles.table}>
+            <thead>
+              <tr>
+                {[
+                  "Photo",
+                  "Name",
+                  "Type",
+                  "Company",
+                  "Purpose",
+                  "Whom to Meet",
+                  "Check-in",
+                  "Check-out",
+                  "Status",
+                  "Docs",
+                  "Pass",
+                ].map((h) => (
+                  <th key={h} style={styles.th}>
+                    {h}
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+
+            <tbody>
+              {filteredVisitors.map((v) => (
+                <tr key={v._id}>
+                  <td style={styles.td}>
+                    {v.photo ? (
+  <img
+  src={v.photo}
+  alt="visitor"
+  style={styles.photo}
+/>
+
+) : (
+  "--"
+)}
+                  </td>
+                  <td style={styles.tdBold}>{v.name}</td>
+                  <td style={styles.td}>{v.visitorType}</td>
+                  <td style={styles.td}>{v.company}</td>
+                  <td style={styles.td}>{v.purpose}</td>
+                  <td style={styles.td}>{v.whomToMeet || "--"}</td>
+                  <td style={styles.tdSmall}>
+                    {v.checkinTime
+                      ? new Date(v.checkinTime).toLocaleString()
+                      : "--"}
+                  </td>
+                  <td style={styles.tdSmall}>
+                    {v.checkoutTime
+                      ? new Date(v.checkoutTime).toLocaleString()
+                      : "--"}
+                  </td>
+                  <td style={styles.td}>{v.status}</td>
+                  <td style={styles.td}>
+                    {v.idProofFile ? (
+                      <button
+                        style={styles.docBtn}
+                        onClick={() => openDoc(v.idProofFile)}
+                      >
+                        View
+                      </button>
+                    ) : (
+                      "--"
+                    )}
+                  </td>
+                  <td style={styles.td}>
+                    <button
+                      style={styles.passBtn}
+                      onClick={() => navigate(`/pass/${v._id}`)}
+                    >
+                      Pass
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </main>
     </div>
   );
 }
 
-/************ STYLES ************/
+/* ===================== STYLES ===================== */
+
 const styles = {
-  page: {
-    background: "#f5f7fc",
+  canvas: {
     minHeight: "100vh",
+    background: "#F6F3EE",
+    fontFamily: "Inter, system-ui, sans-serif",
   },
+
   header: {
-    background: "linear-gradient(135deg, #0d1b3d, #1f3b73)",
-    padding: "20px 40px",
+    height: "64px",
+    background: "#FFFFFF",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: "0 32px",
+    borderBottom: "1px solid #E5E7EB",
+  },
+
+  headerLeft: {
     display: "flex",
     alignItems: "center",
-    gap: "20px",
-    color: "white",
-    borderRadius: "0 0 25px 25px",
+    gap: "14px",
   },
-  logo: { height: "70px" },
-  headerTitle: { flex: 1, fontSize: "26px", fontWeight: "700" },
-  logoutBtn: {
-    background: "#f4d07f",
-    color: "#0d1b3d",
-    padding: "10px 18px",
+
+  logo: { height: "44px" },
+
+  hamburger: {
+    fontSize: "22px",
+    background: "transparent",
     border: "none",
-    borderRadius: "8px",
     cursor: "pointer",
   },
+
+  headerActions: {
+    display: "flex",
+    gap: "10px",
+  },
+
+  reportBtn: {
+    padding: "8px 16px",
+    borderRadius: "6px",
+    border: "1px solid #CBD5E1",
+    background: "#FFFFFF",
+    fontWeight: "600",
+    cursor: "pointer",
+  },
+
+  sidebarOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(0,0,0,0.3)",
+    zIndex: 999,
+  },
+
+  sidebar: {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    width: "260px",
+    height: "100vh",
+    background: "#FFFFFF",
+    padding: "24px",
+    boxShadow: "4px 0 20px rgba(0,0,0,0.1)",
+    zIndex: 1000,
+  },
+
+  sidebarTitle: {
+    fontSize: "18px",
+    fontWeight: "700",
+    marginBottom: "20px",
+  },
+
+  sidebarItem: {
+    width: "100%",
+    padding: "12px 16px",
+    textAlign: "left",
+    border: "none",
+    background: "transparent",
+    cursor: "pointer",
+    borderRadius: "6px",
+  },
+
+  sidebarLogout: {
+    marginTop: "30px",
+    padding: "12px",
+    background: "#FEE2E2",
+    border: "none",
+    borderRadius: "6px",
+    cursor: "pointer",
+    fontWeight: "600",
+  },
+
+  hero: {
+    margin: "24px",
+    padding: "28px",
+    background: "#1E3A8A",
+    color: "#FFFFFF",
+    borderRadius: "12px",
+  },
+
+  heroTitle: {
+    fontSize: "28px",
+    marginBottom: "6px",
+  },
+
+  heroSubtitle: {
+    opacity: 0.9,
+  },
+
+  stage: {
+    maxWidth: "1400px",
+    margin: "0 auto",
+    padding: "0 24px 40px",
+  },
+
   statsRow: {
-    display: "flex",
-    gap: "20px",
-    padding: "20px 40px",
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: "24px",
+    marginBottom: "24px",
   },
-  statBox: {
-    flex: 1,
-    background: "white",
-    borderRadius: "15px",
-    padding: "20px",
-    boxShadow: "0 3px 12px rgba(0,0,0,0.1)",
-    textAlign: "center",
+
+  statCard: {
+    background: "#FFFFFF",
+    padding: "24px",
+    borderRadius: "12px",
   },
+
+  statLabel: {
+    fontSize: "13px",
+    color: "#64748B",
+  },
+
+  statValue: {
+    fontSize: "32px",
+    fontWeight: "700",
+  },
+
   filterRow: {
-    padding: "0 40px",
-    marginTop: "10px",
     display: "flex",
-    gap: "15px",
+    gap: "12px",
+    marginBottom: "24px",
   },
+
   search: {
     flex: 1,
     padding: "12px",
-    borderRadius: "10px",
-    border: "1px solid #ccc",
+    borderRadius: "6px",
+    border: "1px solid #CBD5E1",
   },
+
   select: {
     padding: "12px",
-    borderRadius: "10px",
-    border: "1px solid #ccc",
+    borderRadius: "6px",
+    border: "1px solid #CBD5E1",
   },
+
   tableWrapper: {
-    margin: "20px 40px",
-    background: "white",
-    padding: "20px",
-    borderRadius: "15px",
-    boxShadow: "0 3px 12px rgba(0,0,0,0.1)",
+    background: "#FFFFFF",
+    borderRadius: "12px",
+    overflow: "hidden",
   },
+
   table: {
     width: "100%",
     borderCollapse: "collapse",
   },
-  insideBadge: {
-    background: "#d4edda",
-    padding: "5px 10px",
-    borderRadius: "6px",
+
+  th: {
+    padding: "14px",
+    background: "#F1F5F9",
+    textAlign: "left",
+    fontSize: "13px",
+    fontWeight: "700",
   },
-  outBadge: {
-    background: "#f8d7da",
-    padding: "5px 10px",
-    borderRadius: "6px",
+
+  td: {
+    padding: "14px",
+    borderBottom: "1px solid #E5E7EB",
+    fontSize: "14px",
   },
-  docBtns: { display: "flex", gap: "6px", flexWrap: "wrap" },
+
+  tdBold: {
+    padding: "14px",
+    fontWeight: "600",
+  },
+
+  tdSmall: {
+    padding: "14px",
+    fontSize: "13px",
+    color: "#475569",
+  },
+
+  photo: {
+    width: "40px",
+    height: "40px",
+    borderRadius: "50%",
+    objectFit: "cover",
+  },
+
   docBtn: {
-    background: "#0d1b3d",
-    color: "white",
-    border: "none",
-    padding: "6px 10px",
+    padding: "6px 12px",
     borderRadius: "6px",
+    border: "1px solid #CBD5E1",
+    background: "#FFFFFF",
     cursor: "pointer",
   },
+
   passBtn: {
-    background: "#0d6efd",
-    color: "white",
-    padding: "6px 10px",
+    padding: "6px 12px",
     borderRadius: "6px",
-    cursor: "pointer",
     border: "none",
-  }
+    background: "#1E3A8A",
+    color: "#FFFFFF",
+    cursor: "pointer",
+    fontWeight: "600",
+  },
 };
 
 export default Dashboard;

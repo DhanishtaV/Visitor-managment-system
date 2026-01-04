@@ -15,7 +15,7 @@ export default function AddSecurityUser() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post("http://localhost:5000/admin/create-security", data);
+      await axios.post("http://localhost:5001/admin/create-security", data);
       alert("Security user created!");
     } catch (err) {
       alert("Error creating user");
